@@ -14,21 +14,21 @@ models = (
 
 
 def load_ratings():
-    return pd.read_csv("ratings.csv")
+    return pd.read_csv("./data/ratings.csv")
 
 
 def load_course_sims():
-    return pd.read_csv("sim.csv")
+    return pd.read_csv("./data/sim.csv")
 
 
 def load_courses():
-    df = pd.read_csv("course_processed.csv")
+    df = pd.read_csv("./data/course_processed.csv")
     df["TITLE"] = df["TITLE"].str.title()
     return df
 
 
 def load_bow():
-    return pd.read_csv("courses_bows.csv")
+    return pd.read_csv("./data/courses_bows.csv")
 
 
 def add_new_ratings(new_courses):
