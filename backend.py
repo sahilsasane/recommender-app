@@ -1,4 +1,7 @@
 import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 
 models = (
     "Course Similarity",
@@ -34,7 +37,6 @@ def load_bow():
 def add_new_ratings(new_courses):
     res_dict = {}
     if len(new_courses) > 0:
-        # Create a new user id, max id + 1
         ratings_df = load_ratings()
         new_id = ratings_df["user"].max() + 1
         users = [new_id] * len(new_courses)
@@ -78,12 +80,37 @@ def course_similarity_recommendations(
     return res
 
 
+joined_df_with_clusters = 0
+
+
 # Model training
 def train(model_name, params):
     if model_name == models[1]:
         pass
     elif model_name == models[2]:
-        pass
+        cluster = params["clusters"]
+
+        sims_df = load_course_sims()
+        course_processed = load_courses()
+        course_ids = pd.DataFrame(course_processed.loc[:, "COURSE_ID"])
+        pca = PCA(n_components=cluster)
+        pca_result = pca.fit_transform(sims_df)
+        merged = course_ids.join(pd.DataFrame(pca_result)).reset_index()
+        pc_rename = {i: f"PC{i}" for i in range(len(merged.columns) - 1)}
+        merged.rename(
+            columns=pc_rename,
+            inplace=True,
+        )
+        kmeans = KMeans(n_clusters=cluster)
+        print(merged.iloc[:, 2:])
+        clusters = kmeans.fit_predict(merged.iloc[:, 2:])
+        joined_df_with_clusters = (
+            course_processed.join(pd.DataFrame(clusters))
+            .reset_index()
+            .drop(["index", "TITLE", "DESCRIPTION"], axis=1)
+        )
+        print(joined_df_with_clusters.head())
+
     elif model_name == models[3]:
         pass
     elif model_name == models[4]:
@@ -131,6 +158,7 @@ def predict(model_name, user_ids, params):
             pass
         elif model_name == models[3]:
             pass
+
         elif model_name == models[4]:
             pass
         elif model_name == models[5]:

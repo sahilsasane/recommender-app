@@ -116,6 +116,7 @@ elif model_selection == backend.models[2]:
     cluster_no = st.sidebar.slider(
         "Number of Clusters", min_value=0, max_value=50, value=20, step=1
     )
+    params["clusters"] = cluster_no
 else:
     pass
 
