@@ -71,14 +71,20 @@ def init__recommender_app():
 
 
 def train(model_name, params):
-    with st.spinner("Training..."):
-        time.sleep(0.5)
-        backend.train(model_name, params)
-    st.success("Done!")
+    if model_name == backend.models[0]:
+        with st.spinner("Training..."):
+            time.sleep(0.5)
+            backend.train(model_name, params)
+        st.success("Done!")
+    elif model_name == backend.models[1]:
+        pass
+    else:
+        pass
 
 
 def predict(model_name, user_ids, params):
     res = None
+
     with st.spinner("Generating course recommendations: "):
         time.sleep(0.5)
         res = backend.predict(model_name, user_ids, params)
@@ -95,6 +101,7 @@ model_selection = st.sidebar.selectbox("Select model:", backend.models)
 
 params = {}
 st.sidebar.subheader("2. Tune Hyper-parameters: ")
+
 if model_selection == backend.models[0]:
     top_courses = st.sidebar.slider(
         "Top courses", min_value=0, max_value=100, value=10, step=1
@@ -105,6 +112,9 @@ if model_selection == backend.models[0]:
     params["top_courses"] = top_courses
     params["sim_threshold"] = course_sim_threshold
 elif model_selection == backend.models[1]:
+    top_courses = st.sidebar.slider(
+        "Top courses", min_value=0, max_value=100, value=10, step=1
+    )
     profile_sim_threshold = st.sidebar.slider(
         "User Profile Similarity Threshold %",
         min_value=0,
@@ -112,11 +122,12 @@ elif model_selection == backend.models[1]:
         value=50,
         step=10,
     )
+    params["top_courses"] = top_courses
+    params["sim_threshold"] = profile_sim_threshold
 elif model_selection == backend.models[2]:
     cluster_no = st.sidebar.slider(
         "Number of Clusters", min_value=0, max_value=50, value=20, step=1
     )
-    params["clusters"] = cluster_no
 else:
     pass
 
