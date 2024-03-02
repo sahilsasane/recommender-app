@@ -126,11 +126,14 @@ elif model_selection == backend.models[1]:
     params["sim_threshold"] = profile_sim_threshold
 elif model_selection == backend.models[2]:
     cluster_no = st.sidebar.slider(
-        "Number of Clusters", min_value=0, max_value=50, value=20, step=1
+        "Number of Clusters", min_value=0, max_value=30, value=20, step=1
     )
-else:
-    pass
-
+    params["n_clusters"] = cluster_no
+elif model_selection == backend.models[3]:
+    cluster_no = st.sidebar.slider(
+        "Number of Clusters", min_value=0, max_value=30, value=20, step=1
+    )
+    params["n_clusters"] = cluster_no
 
 st.sidebar.subheader("3. Training: ")
 training_button = st.sidebar.button("Train Model")

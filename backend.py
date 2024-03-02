@@ -43,6 +43,10 @@ def load_user_profiles():
     return pd.read_csv("./data/user_profile.csv")
 
 
+def load_PCA_clustered_user_profiles():
+    return pd.read_csv("./data/user_profile_clustered.csv")
+
+
 def add_new_ratings(new_courses):
     res_dict = {}
     if len(new_courses) > 0:
@@ -132,6 +136,10 @@ def user_profile_reommendations(idx_id_dict, enrolled_course_ids, user_vector):
     return sorted_dict
 
 
+def content_clustering_PCA():
+    pass
+
+
 joined_df_with_clusters = 0
 
 
@@ -164,7 +172,31 @@ def train(model_name, params):
         print(joined_df_with_clusters.head())
 
     elif model_name == models[3]:
-        pass
+        profile_df = load_user_profiles()
+        ratings_df = load_ratings()
+
+        feature_names = list(profile_df.columns[1:])
+        scaler = StandardScaler()
+        profile_df[feature_names] = scaler.fit_transform(profile_df[feature_names])
+        features = profile_df.loc[:, profile_df.columns != "user"]
+        user_ids = profile_df.loc[:, profile_df.columns == "user"]
+        n_clusters = params["n_clusters"]
+        pca = PCA(n_components=n_clusters)
+        features_red = pca.fit_transform(features)
+        rename_pc = ["pca" + str(i) for i in range(1, n_clusters + 1)]
+        merged_pca_df = user_ids.join(
+            pd.DataFrame(features_red, columns=rename_pc)
+        ).reset_index(drop=True)
+
+        kmeans = KMeans(n_init="auto", n_clusters=n_clusters)
+        kmeans.fit_predict(merged_pca_df)
+
+        clustered_users = user_ids.join(
+            pd.DataFrame(kmeans.labels_), columns=["cluster"]
+        )
+        labelled = pd.merge(clustered_users, profile_df, on="user")
+        labelled.to_csv("./data/user_profile_clustered_pca.csv", index=False)
+
     elif model_name == models[4]:
         pass
     elif model_name == models[5]:
@@ -221,6 +253,7 @@ def predict(model_name, user_ids, params):
 
         elif model_name == models[2]:
             pass
+
         elif model_name == models[3]:
             pass
 
