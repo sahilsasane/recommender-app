@@ -44,7 +44,7 @@ def load_user_profiles():
 
 
 def load_PCA_clustered_user_profiles():
-    return pd.read_csv("./data/user_profile_clustered.csv")
+    return pd.read_csv("./data/user_profile_clustered_pca.csv")
 
 
 def add_new_ratings(new_courses):
@@ -136,8 +136,34 @@ def user_profile_reommendations(idx_id_dict, enrolled_course_ids, user_vector):
     return sorted_dict
 
 
-def content_clustering_PCA():
-    pass
+def content_clustering_PCA(courses_clusters, labelled, user_id):
+    recommended = {}
+    union_courses = set()
+    d_user = labelled[labelled["user"] == user_id]
+    cluster = d_user["cluster"].values[0]
+    all_courses_cluster = courses_clusters[courses_clusters["cluster"] == cluster]
+    all_courses_cluster = (
+        all_courses_cluster.sort_values(by="enrollments").iloc[:, 1].values
+    )
+    user_courses = d_user["item"].values
+    new_courses = list(
+        set(all_courses_cluster).difference(
+            set(all_courses_cluster).intersection(set(user_courses))
+        )
+    )
+    recommended[user_id] = new_courses
+    union_courses = union_courses.union(set(new_courses))
+    avail = list(union_courses)
+    user_recommendations = pd.DataFrame(
+        [
+            [user] + [courses.count(c) for c in avail]
+            for user, courses in recommended.items()
+        ],
+        columns=["user"] + avail,
+    )
+    ll = list(user_recommendations.columns[1:])
+    recom = {ll[i]: len(ll) - i for i in range(len(ll))}
+    return recom
 
 
 joined_df_with_clusters = 0
@@ -169,17 +195,18 @@ def train(model_name, params):
             .reset_index()
             .drop(["index", "TITLE", "DESCRIPTION"], axis=1)
         )
-        print(joined_df_with_clusters.head())
+        # print(joined_df_with_clusters.head())
 
     elif model_name == models[3]:
         profile_df = load_user_profiles()
         ratings_df = load_ratings()
-
         feature_names = list(profile_df.columns[1:])
         scaler = StandardScaler()
         profile_df[feature_names] = scaler.fit_transform(profile_df[feature_names])
+
         features = profile_df.loc[:, profile_df.columns != "user"]
         user_ids = profile_df.loc[:, profile_df.columns == "user"]
+
         n_clusters = params["n_clusters"]
         pca = PCA(n_components=n_clusters)
         features_red = pca.fit_transform(features)
@@ -192,9 +219,9 @@ def train(model_name, params):
         kmeans.fit_predict(merged_pca_df)
 
         clustered_users = user_ids.join(
-            pd.DataFrame(kmeans.labels_), columns=["cluster"]
+            pd.DataFrame(kmeans.labels_, columns=["cluster"])
         )
-        labelled = pd.merge(clustered_users, profile_df, on="user")
+        labelled = pd.merge(clustered_users, ratings_df, on="user")
         labelled.to_csv("./data/user_profile_clustered_pca.csv", index=False)
 
     elif model_name == models[4]:
@@ -222,6 +249,7 @@ def predict(model_name, user_ids, params):
     scores = []
     res_dict = {}
     for user_id in user_ids:
+        print("user_ids", user_ids)
         if model_name == models[0]:
             ratings_df = load_ratings()
             user_ratings = ratings_df[ratings_df["user"] == user_id]
@@ -255,8 +283,21 @@ def predict(model_name, user_ids, params):
             pass
 
         elif model_name == models[3]:
-            pass
+            labelled = load_PCA_clustered_user_profiles()
+            courses_clusters = labelled[["item", "cluster"]]
+            courses_clusters["count"] = [1] * len(courses_clusters)
+            courses_clusters = (
+                courses_clusters.groupby(["cluster", "item"])
+                .agg(enrollments=("count", "sum"))
+                .reset_index()
+            )
 
+            res = content_clustering_PCA(courses_clusters, labelled, user_id)
+
+            for key, score in res.items():
+                users.append(user_id)
+                courses.append(key)
+                scores.append(score)
         elif model_name == models[4]:
             pass
         elif model_name == models[5]:
