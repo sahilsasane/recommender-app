@@ -47,6 +47,10 @@ def load_PCA_clustered_user_profiles():
     return pd.read_csv("./data/user_profile_clustered_pca.csv")
 
 
+def load_clustered_user_profiles():
+    return pd.read_csv("./data/user_profile_clustered.csv")
+
+
 def add_new_ratings(new_courses):
     res_dict = {}
     if len(new_courses) > 0:
@@ -136,7 +140,7 @@ def user_profile_reommendations(idx_id_dict, enrolled_course_ids, user_vector):
     return sorted_dict
 
 
-def content_clustering_PCA(courses_clusters, labelled, user_id):
+def content_clustering(courses_clusters, labelled, user_id):
     recommended = {}
     union_courses = set()
     d_user = labelled[labelled["user"] == user_id]
@@ -166,36 +170,30 @@ def content_clustering_PCA(courses_clusters, labelled, user_id):
     return recom
 
 
-joined_df_with_clusters = 0
-
-
 # Model training
 def train(model_name, params):
     if model_name == models[1]:
         pass
     elif model_name == models[2]:
-        cluster = params["clusters"]
+        profile_df = load_user_profiles()
+        ratings_df = load_ratings()
+        feature_names = list(profile_df.columns[1:])
+        scaler = StandardScaler()
+        profile_df[feature_names] = scaler.fit_transform(profile_df[feature_names])
 
-        sims_df = load_course_sims()
-        course_processed = load_courses()
-        course_ids = pd.DataFrame(course_processed.loc[:, "COURSE_ID"])
-        pca = PCA(n_components=cluster)
-        pca_result = pca.fit_transform(sims_df)
-        merged = course_ids.join(pd.DataFrame(pca_result)).reset_index()
-        pc_rename = {i: f"PC{i}" for i in range(len(merged.columns) - 1)}
-        merged.rename(
-            columns=pc_rename,
-            inplace=True,
+        features = profile_df.loc[:, profile_df.columns != "user"]
+        user_ids = profile_df.loc[:, profile_df.columns == "user"]
+
+        n_clusters = params["n_clusters"]
+
+        kmeans = KMeans(n_init="auto", n_clusters=n_clusters)
+        kmeans.fit_predict(features)
+
+        clustered_users = user_ids.join(
+            pd.DataFrame(kmeans.labels_, columns=["cluster"])
         )
-        kmeans = KMeans(n_clusters=cluster)
-        print(merged.iloc[:, 2:])
-        clusters = kmeans.fit_predict(merged.iloc[:, 2:])
-        joined_df_with_clusters = (
-            course_processed.join(pd.DataFrame(clusters))
-            .reset_index()
-            .drop(["index", "TITLE", "DESCRIPTION"], axis=1)
-        )
-        # print(joined_df_with_clusters.head())
+        labelled = pd.merge(clustered_users, ratings_df, on="user")
+        labelled.to_csv("./data/user_profile_clustered.csv", index=False)
 
     elif model_name == models[3]:
         profile_df = load_user_profiles()
@@ -249,7 +247,6 @@ def predict(model_name, user_ids, params):
     scores = []
     res_dict = {}
     for user_id in user_ids:
-        print("user_ids", user_ids)
         if model_name == models[0]:
             ratings_df = load_ratings()
             user_ratings = ratings_df[ratings_df["user"] == user_id]
@@ -280,7 +277,19 @@ def predict(model_name, user_ids, params):
                 scores.append(score)
 
         elif model_name == models[2]:
-            pass
+            labelled = load_clustered_user_profiles()
+            courses_clusters = labelled[["item", "cluster"]]
+            courses_clusters["count"] = [1] * len(courses_clusters)
+            courses_clusters = (
+                courses_clusters.groupby(["cluster", "item"])
+                .agg(enrollments=("count", "sum"))
+                .reset_index()
+            )
+            res = content_clustering(courses_clusters, labelled, user_id)
+            for key, score in res.items():
+                users.append(user_id)
+                courses.append(key)
+                scores.append(score)
 
         elif model_name == models[3]:
             labelled = load_PCA_clustered_user_profiles()
@@ -292,7 +301,7 @@ def predict(model_name, user_ids, params):
                 .reset_index()
             )
 
-            res = content_clustering_PCA(courses_clusters, labelled, user_id)
+            res = content_clustering(courses_clusters, labelled, user_id)
 
             for key, score in res.items():
                 users.append(user_id)

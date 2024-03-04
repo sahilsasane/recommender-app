@@ -74,10 +74,17 @@ def train(model_name, params):
     if model_name == backend.models[0]:
         with st.spinner("Training..."):
             time.sleep(0.5)
+        st.success("Done!")
+
+    elif model_name == backend.models[1]:
+        with st.spinner("Training..."):
+            time.sleep(0.5)
+        st.success("Done!")
+    elif model_name == backend.models[2]:
+        with st.spinner("Training..."):
+            time.sleep(0.5)
             backend.train(model_name, params)
         st.success("Done!")
-    elif model_name == backend.models[1]:
-        pass
     elif model_name == backend.models[3]:
         with st.spinner("Training..."):
             time.sleep(0.5)
@@ -107,7 +114,7 @@ st.sidebar.subheader("2. Tune Hyper-parameters: ")
 
 if model_selection == backend.models[0]:
     top_courses = st.sidebar.slider(
-        "Top courses", min_value=0, max_value=100, value=10, step=1
+        "Top courses", min_value=0, max_value=20, value=10, step=1
     )
     course_sim_threshold = st.sidebar.slider(
         "Course Similarity Threshold %", min_value=0, max_value=100, value=50, step=10
@@ -116,7 +123,7 @@ if model_selection == backend.models[0]:
     params["sim_threshold"] = course_sim_threshold
 elif model_selection == backend.models[1]:
     top_courses = st.sidebar.slider(
-        "Top courses", min_value=0, max_value=100, value=10, step=1
+        "Top courses", min_value=0, max_value=20, value=10, step=1
     )
     profile_sim_threshold = st.sidebar.slider(
         "User Profile Similarity Threshold %",
@@ -128,13 +135,17 @@ elif model_selection == backend.models[1]:
     params["top_courses"] = top_courses
     params["sim_threshold"] = profile_sim_threshold
 elif model_selection == backend.models[2]:
+    top_courses = st.sidebar.slider(
+        "Top courses", min_value=0, max_value=200, value=10, step=1
+    )
     cluster_no = st.sidebar.slider(
-        "Number of Clusters", min_value=0, max_value=14, value=7, step=1
+        "Number of Clusters", min_value=0, max_value=30, value=7, step=1
     )
     params["n_clusters"] = cluster_no
+    params["top_courses"] = top_courses
 elif model_selection == backend.models[3]:
     top_courses = st.sidebar.slider(
-        "Top courses", min_value=0, max_value=100, value=10, step=1
+        "Top courses", min_value=0, max_value=200, value=10, step=1
     )
     cluster_no = st.sidebar.slider(
         "Number of Clusters", min_value=0, max_value=14, value=7, step=1
@@ -157,10 +168,16 @@ pred_button = st.sidebar.button("Recommend New Courses")
 if pred_button and selected_courses_df.shape[0] > 0:
 
     new_id = backend.load_ratings().user.max()
-    print("predict:", new_id)
     user_ids = [new_id]
     res_df = predict(model_selection, user_ids, params)
-    res_df = res_df[["COURSE_ID", "SCORE"]]
+    if (
+        model_selection != backend.models[2]
+        and model_selection != backend.models[3]
+        and model_selection != backend.models[1]
+    ):
+        res_df = res_df[["COURSE_ID", "SCORE"]]
+    else:
+        res_df = res_df[["COURSE_ID"]]
     course_df = load_courses()
 
     res_df = pd.merge(res_df, course_df, on=["COURSE_ID"]).drop("COURSE_ID", axis=1)
