@@ -136,7 +136,7 @@ elif model_selection == backend.models[1]:
     params["sim_threshold"] = profile_sim_threshold
 elif model_selection == backend.models[2]:
     top_courses = st.sidebar.slider(
-        "Top courses", min_value=0, max_value=200, value=10, step=1
+        "Top courses", min_value=0, max_value=20, value=10, step=1
     )
     cluster_no = st.sidebar.slider(
         "Number of Clusters", min_value=0, max_value=30, value=7, step=1
@@ -145,7 +145,7 @@ elif model_selection == backend.models[2]:
     params["top_courses"] = top_courses
 elif model_selection == backend.models[3]:
     top_courses = st.sidebar.slider(
-        "Top courses", min_value=0, max_value=200, value=10, step=1
+        "Top courses", min_value=0, max_value=20, value=10, step=1
     )
     cluster_no = st.sidebar.slider(
         "Number of Clusters", min_value=0, max_value=14, value=7, step=1
